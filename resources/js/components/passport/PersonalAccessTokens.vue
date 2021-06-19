@@ -1,8 +1,8 @@
-<!--<style scoped>
+<style scoped>
     .action-link {
         cursor: pointer;
     }
-</style>-->
+</style>
 
 <template>
     <div>
