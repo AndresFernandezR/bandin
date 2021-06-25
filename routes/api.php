@@ -2,7 +2,9 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\API\{AuthController,HomeController};
+use App\Http\Resources\HomeResource;
+use Illuminate\Http\Resources\Json\JsonResource;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -17,3 +19,9 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register-company', [AuthController::class, 'registerCompany']);
+Route::post('/get-token', [AuthController::class, 'getToken']);
+Route::get('/home', [HomeController::class,'typeUser']);
