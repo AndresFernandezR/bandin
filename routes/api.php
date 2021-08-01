@@ -21,7 +21,22 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
 });
 
 
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register-company', [AuthController::class, 'registerCompany']);
-Route::post('/get-token', [AuthController::class, 'getToken']);
-Route::get('/home', [HomeController::class,'typeUser']);
+/*
+|--------------------------------------------------------------------------
+| Login Routes
+|--------------------------------------------------------------------------
+*/
+Route::post('/login-admin', 'API\AuthController@loginAdmin'); // Admin
+
+Route::get('/errors', 'API\AuthController@getResponseFailure'); // Errores
+
+Route::post('/register-company','API\AuthController@registerCompany');
+Route::post('/get-token', 'API\AuthController@getToken');
+Route::get('/home', 'API\HomeController@typeUser');
+
+/*
+|--------------------------------------------------------------------------
+| User Routes
+|--------------------------------------------------------------------------
+*/
+Route::get('/users', 'API\UserController@index');

@@ -3,13 +3,30 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+
 use Illuminate\Http\Request;
-use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use Illuminate\Support\Facades\Validator;
+
+use App\Models\{User};
+use App\Services\Auth\{AdminServiceClass};
+use App\Http\Requests\{AdminLoginRequest};
+use App\Rules\{UserTypeEmail};
 
 class AuthController extends Controller
 {
+    /**
+     * Constructor
+     * 
+     * @param
+     * @return
+     */
+    public function __construct()
+    {
+        
+    }
+
     /**
      * Get Token
      * 
@@ -18,10 +35,16 @@ class AuthController extends Controller
      */
     public function getToken(Request $request)
     {
-        $validatedData = $request->validate([
+        $validatedData = Validator::make($request->all(), [
                                              'client_secret'      => 'required|exists:oauth_clients,secret',
                                              'email'              => 'required|email|exists:users,email',
                                              ]);
+
+        if ($validatedData->fails()) {
+            return response([
+                'errors' => $validatedData->errors()->all()
+            ], 400);
+        }
 
         $user = User::whereEmail($request->email)
                         ->first();
@@ -67,16 +90,35 @@ class AuthController extends Controller
                         ]);
     }
 
-    public function login(Request $request)
+    /**
+     * Admin login method
+     * 
+     * @param Request $request
+     * @return Response $response
+     */
+    public function loginAdmin(Request $request)
     {
-        $loginData =$request->validate([
-                                        'email'     => 'required|email',
-                                        'password'  => 'required'
-                                        ]);
-        if(!auth()->attempt($loginData)){
-            return response(['message' => 'Invalid Credentials']);
+        $adminService = new AdminServiceClass;
+
+        $validatedData = $adminService->validateRequest($request->all());
+
+        if ($validatedData->fails()) {
+            return response([
+                                'errors' => $validatedData->errors()->all()
+                            ], 400);
         }
 
+        // Take only email and password
+        $loginData = $adminService->getLoginData($request->all());
+
+        // Attempts to login user with specified credentials
+        if (!auth()->attempt($loginData)) {
+            return response([
+                                'message' => 'Datos de acceso incorrectos'
+                            ], 400);
+        }
+
+        // If login was succesful then create a Token
         $accesToken = auth()->user()->createToken('authToken')->accessToken;
 
         return response([
@@ -86,6 +128,27 @@ class AuthController extends Controller
                         'access_token'  => $accesToken,
                         'expires_in'    => "1 hour"
                         ]);
+    }
+
+    /**
+     * 
+     */
+    public function getResponseFailure()
+    {
+        $errors = \Session::get('errors');
+        $errors = json_decode($errors);
+
+        dd($errors);
+
+        $result             = [];
+        $result['success']  = false;
+        
+        foreach ($errors as $error) {
+            $result['errors'][] = $error;
+        }
+
+
+        return response($result, 400);
     }
 
     public function getCompanyKey()
