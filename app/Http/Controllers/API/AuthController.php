@@ -9,10 +9,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Support\Facades\Validator;
 
-use App\Models\{User};
-use App\Services\Auth\{AdminServiceClass};
-use App\Http\Requests\{AdminLoginRequest};
-use App\Rules\{UserTypeEmail};
+use App\Models\{Company, User};
+use App\Services\Auth\{AdminServiceClass, CompanyServiceClass, RegularUserServiceClass};
 
 class AuthController extends Controller
 {
@@ -67,27 +65,122 @@ class AuthController extends Controller
      */
     public function registerCompany(Request $request)
     {
-        $validatedData = $request->validate([
-                                            'name'      => 'required|max:255',
-                                            'email'     => 'required|email|unique:users',
-                                            'password'  => 'required|confirmed',
-                                            ]);
+        $companyService = new CompanyServiceClass;
 
-        $validatedData['password'] = Hash::make($request->password);
-        $validatedData['user_type_id'] = 2;
-        $validatedData['company_key'] = $this->getCompanyKey();
-        info($validatedData);
-        $user = User::create($validatedData);
+        $validatedData = $companyService->validateRequest(
+                                                            $request->all(), 
+                                                            $companyService->registerRules()
+                                                        );
+        
+        if ($validatedData->fails()) {
+            return response([
+                'errors' => $validatedData->errors()->all()
+            ], 400);
+        }
 
-        $accesToken = $user->createToken('authToken')->accessToken;
+        //Create new company
+        $company = $companyService->createCompany($request->name, $this->newCompanyKey());
+
+        // Add data to new company's user
+        $user_data = [];
+        $user_data['name'] = $request->name;
+        $user_data['email'] = $request->email;
+        $user_data['password'] = Hash::make($request->password);
+        $user_data['user_type_id'] = 2;
+        $user_data['company_id'] = $company->id;
+
+        // Create new company user
+        $user = User::create($user_data);
 
         return response([
                         'success'       => true,
-                        'user'          => $user,
-                        'token_type'    => 'Bearer',
-                        'access_token'  => $accesToken,
-                        'expires_in'    => "1 hour"
+                        'user'          => $user
                         ]);
+    }
+
+    /**
+     * Register User
+     * 
+     * @param Request $request
+     * @return Response id,Token
+     */
+    public function registerUser(Request $request)
+    {
+        $userService = new RegularUserServiceClass;
+
+        $validatedData = $userService->validateRequest(
+            $request->all(),
+            $userService->registerRules()
+        );
+
+        if ($validatedData->fails()) {
+            return response([
+                'errors' => $validatedData->errors()->all()
+            ], 400);
+        }
+
+        $user_data = [];
+
+        $user_data['name'] = $request->name;
+        $user_data['email'] = $request->email;
+        $user_data['password'] = Hash::make($request->password);
+        $user_data['user_type_id'] = 2;
+        $user_data['company_key'] = $this->newCompanyKey();
+
+        $user = User::create($user_data);
+
+        // $accesToken = $user->createToken('authToken')->accessToken;
+
+        return response([
+            'success'       => true,
+            'user'          => $user,
+            // 'token_type'    => 'Bearer',
+            // 'access_token'  => $accesToken,
+            // 'expires_in'    => "1 hour"
+        ]);
+    }
+
+    /**
+     * Company Login Method
+     * 
+     * @param Request $request
+     * @return Response $response
+     */
+    public function companyLogin(Request $request)
+    {
+        $companyService = new CompanyServiceClass;
+
+        $validatedData = $companyService->validateRequest(
+                                                            $request->all(),
+                                                            $companyService->loginRules()
+                                                        );
+
+        if ($validatedData->fails()) {
+            return response([
+                'errors' => $validatedData->errors()->all()
+            ], 400);
+        }
+
+        // Take only email and password
+        $loginData = $companyService->getLoginData($request->all());
+
+        // Attempts to login user with specified credentials
+        if (!auth()->attempt($loginData)) {
+            return response([
+                'message' => 'Datos de acceso incorrectos'
+            ], 400);
+        }
+
+        // If login was succesful then create a Token
+        $accesToken = auth()->user()->createToken('authToken')->accessToken;
+
+        return response([
+                            'success'       => true,
+                            'user'          => auth()->user(),
+                            'token_type'    => 'Bearer',
+                            'access_token'  => $accesToken,
+                            'expires_in'    => "1 hour"
+                        ], 200);
     }
 
     /**
@@ -96,7 +189,7 @@ class AuthController extends Controller
      * @param Request $request
      * @return Response $response
      */
-    public function loginAdmin(Request $request)
+    public function adminLogin(Request $request)
     {
         $adminService = new AdminServiceClass;
 
@@ -131,37 +224,61 @@ class AuthController extends Controller
     }
 
     /**
+     * Company Login Method
      * 
+     * @param Request $request
+     * @return Response $response
      */
-    public function getResponseFailure()
+    public function userLogin(Request $request)
     {
-        $errors = \Session::get('errors');
-        $errors = json_decode($errors);
+        $companyService = new CompanyServiceClass;
 
-        dd($errors);
+        $validatedData = $companyService->validateRequest(
+            $request->all(),
+            $companyService->loginRules()
+        );
 
-        $result             = [];
-        $result['success']  = false;
-        
-        foreach ($errors as $error) {
-            $result['errors'][] = $error;
+        if ($validatedData->fails()) {
+            return response([
+                'errors' => $validatedData->errors()->all()
+            ], 400);
         }
 
+        // Take only email and password
+        $loginData = $companyService->getLoginData($request->all());
 
-        return response($result, 400);
+        // Attempts to login user with specified credentials
+        if (!auth()->attempt($loginData)) {
+            return response([
+                'message' => 'Datos de acceso incorrectos'
+            ], 400);
+        }
+
+        // If login was succesful then create a Token
+        $accesToken = auth()->user()->createToken('authToken')->accessToken;
+
+        return response([
+            'success'       => true,
+            'user'          => auth()->user(),
+            'token_type'    => 'Bearer',
+            'access_token'  => $accesToken,
+            'expires_in'    => "1 hour"
+        ], 200);
     }
 
-    public function getCompanyKey()
+    /**
+     * Set company's autoincremental key
+     * 
+     * @param none
+     * @return string $key
+     */
+    public function newCompanyKey() : string
     {
-        $last_id = User::whereUserTypeId('2')
-                        ->orderBy('company_key','desc')
-                        ->first();
+        $last_id = Company::orderBy('id','desc')->first();
         
         $last_id = $last_id->company_key ?? 0;
-        $last_id = (int)$last_id + 1;
+        $last_id = (int) $last_id + 1;
 
-        $id = str_pad($last_id, 4, "0", STR_PAD_LEFT);
-        
-        return $id;
+        return str_pad($last_id, 4, "0", STR_PAD_LEFT);   
     }
 }

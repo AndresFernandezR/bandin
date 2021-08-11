@@ -15,7 +15,7 @@ class UsersTableSeeder extends Seeder
         User::create([
             'company_id'    => null,
             'user_type_id'  => 1,
-            'company_key'   => null,
+            // 'company_key'   => null,
             'name'          => 'Admin',
             'email'         => 'admin@bandin.com',
             'password'      => bcrypt('4dminB4and1n#2021'),

@@ -29,23 +29,13 @@ class UserTypeEmail implements Rule
     {
         $user = null;
 
-        // Verify if user exists in user type
-        // Admin
-        if ($this->user_type == 1) {
-            $user = User::whereEmail($value)
-                        ->whereUserTypeId($this->user_type)
-                        ->first();
-        }
+        // Verify if user exists in specified user type
+        $user = User::whereEmail($value)
+                    ->whereUserTypeId($this->user_type)
+                    ->first();
 
-        if ($user) {
-            info('Pasa');
-            return true;
-        }
-
-        info('Falla');
-        return false;
-                // ? true 
-                // : false;
+        return ($user) ? true 
+                        : false;
     }
 
     /**

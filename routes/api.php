@@ -26,11 +26,20 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
 | Login Routes
 |--------------------------------------------------------------------------
 */
-Route::post('/login-admin', 'API\AuthController@loginAdmin'); // Admin
+Route::post('/login-admin', 'API\AuthController@adminLogin'); // Admin
+Route::post('/login-company', 'API\AuthController@companyLogin'); // Company
+Route::post('/login-user', 'API\AuthController@userLogin'); // Users (Externos, Sucursal o Franquicia)
 
 Route::get('/errors', 'API\AuthController@getResponseFailure'); // Errores
 
+/*
+|--------------------------------------------------------------------------
+| Register Routes
+|--------------------------------------------------------------------------
+*/
 Route::post('/register-company','API\AuthController@registerCompany');
+Route::post('/register-users', 'API\AuthController@registerUser');
+
 Route::post('/get-token', 'API\AuthController@getToken');
 Route::get('/home', 'API\HomeController@typeUser');
 
@@ -40,3 +49,7 @@ Route::get('/home', 'API\HomeController@typeUser');
 |--------------------------------------------------------------------------
 */
 Route::get('/users', 'API\UserController@index');
+
+Route::get('/test', function() {
+    return "TEST";
+});
